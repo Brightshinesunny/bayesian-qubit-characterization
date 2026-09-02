@@ -124,5 +124,5 @@ TLS生データ探索における「ピクセル強度値」は、Region-Aided S
 は行っていない。
 
 
-<img width="1064" height="490" alt="3" src="https://github.com/user-attachments/assets/5ebf79c0-32b1-4590-b578-8ec1ac374c96" />
+<img width="900" height="490" alt="3" src="https://github.com/user-attachments/assets/5ebf79c0-32b1-4590-b578-8ec1ac374c96" />
 
