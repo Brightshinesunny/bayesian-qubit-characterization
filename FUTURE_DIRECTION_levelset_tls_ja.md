@@ -122,3 +122,7 @@ TLS生データ探索における「ピクセル強度値」は、Region-Aided S
 の自動検出など）によってリアルタイムに更新される形になる。これは
 4-1、4-2よりもさらに先の段階の構想であり、まだ具体的な数学的定式化
 は行っていない。
+
+
+<img width="1064" height="490" alt="3" src="https://github.com/user-attachments/assets/5ebf79c0-32b1-4590-b578-8ec1ac374c96" />
+
