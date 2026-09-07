@@ -1,6 +1,6 @@
 # 10_mathematica_fisher_pipeline
 
-[한국어](README.md) | English (this document) | [日本語](README_ja.md)
+English (this document) | [日本語](README_ja.md)
 
 If folders 01–09 are entirely Python (emcee/scipy), this folder is a
 record of the **same idea — applying the Bayesian/Fisher-matrix
