@@ -1,6 +1,7 @@
 # 11_results_figures
 
-[한국어](README.md) | 日本語（本ページ）
+
+
 
 このフォルダの3枚の図は、本日の文書（README、PORTFOLIO_DETAILED.md）で
 述べた核心的発見を、実際の生データを用いて再実行して得た結果です。
@@ -10,6 +11,7 @@ npzファイル、TLSのraw segment matファイル）と、原著者の方法�
 を用いて直接再計算したものです。
 
 ---
+<img width="1350" height="900" alt="fig1_qi_divergence" src="https://github.com/user-attachments/assets/dca3d209-3c1d-41cd-9cfb-4950ab55913e" />
 
 ## fig1_qi_divergence.png — 臨界結合付近での内部Q値の発散
 
@@ -21,6 +23,9 @@ npzファイル、TLSのraw segment matファイル）と、原著者の方法�
 ほど臨界結合に近く（Ql/Qcが1に近接）、それだけ|Qi|が数万から数百万
 まで指数関数的に発散することが、実データで確認されます。
 
+
+<img width="1950" height="825" alt="fig2_circle_fit_example" src="https://github.com/user-attachments/assets/904cacfc-30a6-4819-9df6-060921759f7a" />
+
 ## fig2_circle_fit_example.png — Circle Fitの例（最も極端な発散事例）
 
 fig1で最も大きく発散したresonator_4（undercoupled、Ql/Qc=1.074）を
@@ -28,6 +33,9 @@ fig1で最も大きく発散したresonator_4（undercoupled、Ql/Qc=1.074）を
 右側に周波数に対する|S21|の大きさとフィット曲線を並べて描きました。
 Ql≈181,500、Qc≈169,000と両者が非常に近く、|Qi|が246万まで跳ね上がる
 ことが視覚的に確認できます。
+
+
+<img width="1350" height="900" alt="fig3_systematic_bands" src="https://github.com/user-attachments/assets/4134f852-9972-432f-9d8b-339fbbad0d5b" />
 
 ## fig3_systematic_bands.png — 系統誤差候補バンド（TLS生データ）
 
