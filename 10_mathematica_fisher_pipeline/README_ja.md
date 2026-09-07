@@ -1,6 +1,6 @@
 # 10_mathematica_fisher_pipeline
 
-[한국어](README.md) | [English](README_en.md) | 日本語（本ページ）
+[English](README_en.md) | 日本語（本ページ）
 
 01〜09のフォルダがすべてPython（emcee/scipy）ベースであるのに
 対し、このフォルダは**「重力波物理学のベイズ統計・フィッシャー
