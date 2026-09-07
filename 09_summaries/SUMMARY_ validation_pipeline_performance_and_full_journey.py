@@ -1,5 +1,5 @@
 """
-SUMMARY_robots_performance_and_full_journey.py
+SUMMARY_validation_pipeline_performance_and_full_journey.py
 =================================================================
 [통합 정리] validation_robots.py의 실전 성능 평가 + 오늘 전체 여정
 (Fano/avoided-crossing/TLS/카탈로그매핑) 최종판. 순수 정리용,
