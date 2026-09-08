@@ -1,6 +1,6 @@
 # 01_zenodo_baseline
 
-[한국어](README.md) | [English](README_en.md) | 日本語（本ページ）
+[English](README_en.md) | 日本語（本ページ）
 
 本リポジトリで最初に取り組んだプロジェクトです。超伝導量子ビットの
 avoided-crossing（回避交差）S21スペクトロスコピーに対する、ベイズ統計・
