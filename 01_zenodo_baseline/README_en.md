@@ -1,6 +1,6 @@
 # 01_zenodo_baseline
 
-[日本語](README_ja.md) | English (this document)
+English (this document)
 
 The very first project in this repository: a Bayesian/Fisher-based
 analysis pipeline for superconducting-qubit avoided-crossing (S21)
