@@ -1,6 +1,6 @@
 # Superconducting Qubit Data Analysis — Master Index
 
-English (this document) | [日本語](README_ja.md)
+
 
 A project-by-project index of all work carried out. **If you're not sure where to start, start here.**
 
