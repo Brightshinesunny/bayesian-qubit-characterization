@@ -1,154 +1,149 @@
 """
 SUMMARY_fano_avoided_tls_physics_and_stats.py
 =================================================================
-오늘까지 다룬 세 물리계(Fano 공진기 / avoided-crossing / TLS 매핑)
-정리 문서. 실행용 코드 아니고 순수 정리용 - import 안 해도 됨.
+A write-up of the three physical systems covered so far (Fano resonator / avoided crossing / TLS mapping).
+Not executable code, a pure write-up - no need to import it.
 
 =================================================================
-1부. 세 물리계 관계
+Part 1. Relationship among the three physical systems
 =================================================================
-Fano 공진기 (선형 시스템)
-    - 공진기 하나만의 얘기. 외부와 얼마나 결합했는지(Qc)와 내부
-      손실(Qi)을 구하는 게 목표.
+Fano resonator (linear system)
+    - About a single resonator only. The goal is to obtain how strongly it is coupled to the outside (Qc) and its internal
+      loss (Qi).
 
-Avoided-crossing (두 시스템 상호작용)
-    - 공진기/큐빗이 다른 무언가(TLS, 다른 공진기)랑 만나면 무슨 일이
-      생기는지. Fano 하나로는 안 보이던 "결합"이 등장.
+Avoided crossing (interaction of two systems)
+    - What happens when a resonator/qubit meets something else (a TLS, another resonator).
+      "Coupling", invisible with Fano alone, appears.
 
-TLS 매핑 (avoided-crossing으로 위치 추적)
-    - avoided-crossing이 "어디서" 일어나는지(TLS가 칩의 어디
-      있는지)까지 알아내려는 응용.
+TLS mapping (tracking position through avoided crossings)
+    - An application that aims to find "where" the avoided crossing occurs (where on the chip
+      the TLS is).
 
-정리하면: Fano -> avoided-crossing -> TLS 순서로
-"한 시스템 이해 -> 두 시스템 상호작용 이해 -> 그걸로 위치까지" 순서로
-난이도가 쌓이는 구조였음.
+In sum: Fano -> avoided crossing -> TLS
+was a structure in which difficulty builds up in the order "understand one system -> understand the interaction of two systems -> use that to get down to position".
 
 
 =================================================================
-2부. Fano 공진기 - 물리 / 데이터 문제 / 통계적 대응
+Part 2. Fano resonator - physics / data problems / statistical response
 =================================================================
-[물리]
-공진기가 외부(전송선)와 얼마나 세게 연결됐는지(Qc), 공진기 자체가
-손실 없이 에너지를 저장하는 정도(Qi)를 구함.
+[Physics]
+Obtain how strongly the resonator is connected to the outside (transmission line) (Qc), and the degree to which the
+resonator itself stores energy without loss (Qi).
     1/Ql = 1/Qi + 1/Qc
 
-[데이터에서 나타난 문제]
-- Ql과 Qc가 비슷한 크기(임계결합 근처)일 때, Qi 계산이 나눗셈으로
-  폭발함(0에 가까운 값으로 나누기 때문)
-- Circle fit(원저자 표준 방법)이 이 상황에서 Qi_max=inf를 냄
+[Problems seen in the data]
+- When Ql and Qc are of similar size (near critical coupling), the Qi calculation
+  blows up as a division (dividing by a value close to 0)
+- The circle fit (the original authors' standard method) gives Qi_max=inf in this situation
 
-[통계적 조정]
-- 베이지안/피셔 방식으로 전환 - 원 하나에 억지로 맞추는 기하학적
-  방법 대신, 우도함수로 직접 파라미터 분포를 구함
-- Gaussian vs Robust 교차검증 - 이상치가 평균을 왜곡시키는지 확인
-- 잔차 자기상관 진단 - "잡음이 독립"이라는 가정이 맞는지 확인.
-  AR(1), compound symmetry 등 여러 모델 시도했지만 다 실패,
-  결국 "5% 이상치 제거 + Gaussian/Robust 교차검증"이 가장 안정적
+[Statistical adjustments]
+- Switched to the Bayesian/Fisher approach - instead of a geometric method that forces a fit to one circle,
+  the parameter distribution is obtained directly from the likelihood function
+- Gaussian vs Robust cross-validation - check whether outliers distort the mean
+- Residual autocorrelation diagnostics - check whether the assumption "the noise is independent" holds.
+  Several models such as AR(1) and compound symmetry were tried and all failed,
+  and in the end "5% outlier trimming + Gaussian/Robust cross-validation" was the most stable
 
-[감으로 움직인 부분]
-어떤 계통오차 모델(AR(1)? compound symmetry?)을 먼저 시도할지는
-직관에 의존, 실패를 거듭하며 좁혀감.
+[Parts driven by intuition]
+Which systematic-error model to try first (AR(1)? compound symmetry?)
+relied on intuition, narrowed down through repeated failures.
 
 
 =================================================================
-3부. Avoided-Crossing - 물리 / 데이터 문제 / 통계적 대응
+Part 3. Avoided crossing - physics / data problems / statistical response
 =================================================================
-[물리]
-두 시스템(큐빗-공진기, 큐빗-TLS)이 같은 주파수 근처에 오면, "만나지
-않고 밀어내며" 두 개의 새 고유주파수(혼성모드)를 만듦.
+[Physics]
+When two systems (qubit-resonator, qubit-TLS) come near the same frequency, they "do not meet but
+repel", creating two new eigenfrequencies (hybrid modes).
     omega_± = (f1+f2)/2 ± sqrt((f1-f2)^2 + 4g^2)/2
-공명 지점(f1=f2)에서 두 모드 간격이 정확히 2g가 되는 게 핵심 -
-결합강도를 직접 재는 표준적인 방법.
+The key point is that at the resonance point (f1=f2) the gap between the two modes is exactly 2g -
+the standard way to measure the coupling strength directly.
 
-[데이터에서 나타난 문제]
-- 파라미터 절편(f_TLS0)이 측정구간(V=-57~-56V)에서 멀리 떨어진
-  기준점(V=0)에 정의돼서, 절편과 기울기가 완전히 얽혀버림
-  (상관계수 1.0)
-- 단위 불일치(calibration 데이터가 Hz인데 모델은 GHz 가정)
-- prior 범위가 실제 답(0.109)을 원천 배제하고 있었음 - MCMC가
-  "수렴했다"고 나와도 애초에 답이 될 수 없는 범위 안에서만 찾은
-  거라 결론 자체가 무효였음(위험한 실수)
+[Problems seen in the data]
+- The parameter intercept (f_TLS0) was defined at a reference point (V=0) far from the
+  measurement range (V=-57 to -56 V), so intercept and slope became completely entangled
+  (correlation coefficient 1.0)
+- Unit mismatch (the calibration data were in Hz while the model assumed GHz)
+- The prior range excluded the true answer (0.109) from the start - even when MCMC said it
+  had "converged", it had searched only within a range that could never contain the answer, so the conclusion
+  itself was void (a dangerous mistake)
 
-[통계적 조정]
-- V0 재중심화 - 절편의 기준점을 측정구간 중앙으로 옮겨서 상관관계를
-  0으로 낮춤(합성 데이터로 1.0->0.0 직접 검증)
-- multi-start - 여러 초기값에서 시도해서 국소최적점 문제 완화
-- 진짜 MCMC로 "우물이 하나인지 여러 개인지" 확인 - 점추정 하나로는
-  절대 알 수 없는, posterior 전체 모양이 필요했던 상황
+[Statistical adjustments]
+- V0 recentering - moved the reference point of the intercept to the center of the measurement range, reducing the correlation
+  to 0 (verified directly on synthetic data, 1.0 -> 0.0)
+- multi-start - trying from several initial values to mitigate the local-optimum problem
+- Real MCMC to check "whether there is one well or several" - a situation that needed the whole
+  shape of the posterior, which a single point estimate can never provide
 
-[감으로 움직인 부분]
-g의 물리적 상한(30MHz? 500MHz?)을 얼마로 잡을지, 주파수 탐색 창을
-얼마나 좁힐지는 직관과 시행착오로 정함.
+[Parts driven by intuition]
+The physical upper limit of g (30 MHz? 500 MHz?) and how narrow to make the frequency search window
+were decided by intuition and trial and error.
 
 
 =================================================================
-4부. TLS 매핑 - 물리 / 데이터 문제 / 통계적 대응 (문제가 제일 많았던 부분)
+Part 4. TLS mapping - physics / data problems / statistical response (the part with the most problems)
 =================================================================
-[물리]
-avoided-crossing이 "어디서" 일어나는지 알아내려면, 여러 전극의
-전기장이 TLS를 얼마나 세게 흔드는지(결합세기 gamma)를 비교해서
-위치를 역산. TLS는 전압(전기장)에 따라 공명주파수가 Stark 편이로
-이동함.
+[Physics]
+To find "where" an avoided crossing occurs, the position is back-computed by comparing how strongly
+the electric fields of several electrodes shake the TLS (coupling strength gamma). The TLS resonance frequency
+shifts with voltage (electric field) through the Stark shift.
     f_TLS(V) = f_TLS0 + gamma_stark * V
 
-[데이터에서 나타난 문제]
-1. 계통오차 4개(전극 무관, 관측량 무관, 전압에 거의 안 바뀌는
-   가로줄들)
-2. 딥 추적 알고리즘이 계통오차에 자꾸 갇힘 - 5번의 수정
-   (인덱싱->비선형매핑->교차점->정체감지) 필요했음
-3. 최종적으로 육안 검증했더니, "대각선"이라는 처음 가정 자체가
-   틀렸음 - 실제로는 수평 다중 띠 구조였음
+[Problems seen in the data]
+1. 4 systematic errors (independent of electrode, independent of observable, horizontal lines that hardly change
+   with voltage)
+2. The dip-tracking algorithm kept getting trapped by systematic errors - 5 fixes were needed
+   (indexing -> nonlinear mapping -> crossing point -> stall detection)
+3. Finally, on visual inspection, the initial assumption of a "diagonal" itself was
+   wrong - the real structure was horizontal multiple bands
 
-[통계적 조정]
-- 연속성 제약 딥 추적(이전 점 근처에서만 다음 딥을 찾음) +
-  자동 정체 감지(움직임이 멈추면 계통오차로 간주하고 중단)
-- 품질점수(SNR) - 진짜 신호와 잡음을 구분하는 절대 기준
-  (대비/배경표준편차)
-- 가중중심(weighted centroid) - 시뮬레이션 없이도 대략적인 방향을
-  추정하는 간이 방법
-- 육안 검증 - 숫자(chi2, posterior)만으로는 판단 불가능했던 걸,
-  그림 하나로 명확히 확정
+[Statistical adjustments]
+- Continuity-constrained dip tracking (look for the next dip only near the previous point) +
+automatic stall detection (if motion stops, regard it as a systematic error and stop)
+- Quality score (SNR) - an absolute criterion for separating real signal from noise
+(contrast / background standard deviation)
+- Weighted centroid - a simple way to estimate the rough direction without simulation
+- Visual verification - what could not be judged from numbers (chi2, posterior) alone
+was settled clearly with a single figure
 
-[감으로 움직인 부분 - 가장 많았음]
-계통오차 마스킹 폭(halfwidth), 정체 감지 기준(0.5MHz), 품질점수
-임계값(3.0, 3.5) 전부 "적당해 보이는" 값을 시도하고 결과를 보며
-조정함.
+[Parts driven by intuition - the most of them]
+The systematic-error masking width (halfwidth), the stall-detection criterion (0.5 MHz), and the quality-score
+thresholds (3.0, 3.5) were all tried as "reasonable-looking" values and adjusted
+while watching the results.
 
 
 =================================================================
-5부. 세 물리계를 관통하는 공통 패턴
+Part 5. Common patterns running through the three physical systems
 =================================================================
                     Fano              Avoided-crossing      TLS
-모델 미스매치 발견   Circle fit이      V0 재중심화 누락        대각선 가정 자체가
-                    기하학적 가정                             틀림(육안 확인)
-                    붕괴(임계결합)
+Model mismatch found:    Fano -> the circle fit's geometric assumption breaks down (near critical coupling)
+                                             Avoided crossing -> missed V0 recentering
+                                             TLS mapping -> the assumption of a diagonal itself was wrong (visual check)
 
-잡음/이상치 문제     자기상관,         prior 범위 버그         계통오차 4개,
-                    compound                                딥 추적 5번 실패
-                    symmetry 등
-                    여러 실패
+Noise/outlier problems:   Fano -> autocorrelation, several failures (compound symmetry, etc.)
+                         Avoided crossing -> prior-range bug
+                         TLS mapping -> 4 systematic errors, dip tracking failed 5 times
 
-최종 검증 수단       Gaussian vs       진짜 MCMC로            육안 검증(그림)
-                    Robust 교차검증   posterior 확인
+Final means of validation: Fano -> Gaussian vs Robust cross-check
+                         Avoided crossing -> checking the posterior with real MCMC
+                         TLS mapping -> visual verification (figures)
 
-공통적으로 반복된 패턴: "첫 번째 시도는 항상 어딘가 틀렸고, 그
-틀림을 찾아내는 게 진짜 작업의 대부분"이었음. 그 틀림을 찾는 도구는
-매번 달랐음 - Fano에선 통계적 교차검증, avoided-crossing에선 MCMC
-다중시작점 검증, TLS에선 결국 눈으로 직접 보는 것.
+A pattern repeated throughout: "the first attempt was always wrong somewhere, and finding that error was
+most of the real work". The tool for finding the error differed each time - statistical cross-validation for Fano,
+MCMC multi-start validation for the avoided crossing, and in the end looking directly with the eyes for TLS.
 
 
 =================================================================
-6부. "감으로 움직였다"는 것에 대해
+Part 6. On "moving by intuition"
 =================================================================
-정확히는, 감으로 "시작"했지만 감으로 "끝내지"는 않았음. 매번 패턴이
-같았음:
-    1. 직관으로 임계값/모델 선택 (감)
-    2. 합성 데이터로 그 선택이 실제로 작동하는지 검증 (수치)
-    3. 실제 데이터에 적용
-    4. 결과가 이상하면 -> 1번으로 돌아가서 다른 감으로 재시도
-    5. 육안/교차검증으로 최종 확정
+More precisely, the work "started" from intuition but did not "end" with intuition. The pattern was the same each time:
+1. Choose thresholds/models by intuition (intuition)
+2. Verify on synthetic data that the choice actually works (numbers)
+3. Apply to real data
+4. If the result looks odd -> go back to step 1 and retry with a different intuition
+5. Finalize by visual/cross-validation
 
-이게 나쁜 게 아니라, 정확히 "가설-검증" 과학적 방법론의 실제 모습.
-완전히 이론에서 유도된 임계값은 거의 없었고, 대부분 "합리적인
-시작점 + 반복 검증"이었음 - 이게 실제 데이터 분석이 돌아가는 방식.
+This is not a bad thing; it is exactly what the "hypothesis-test" scientific method looks like in practice.
+Almost no threshold was derived purely from theory; most were a "reasonable
+starting point + repeated verification" - this is how real data analysis works.
 """

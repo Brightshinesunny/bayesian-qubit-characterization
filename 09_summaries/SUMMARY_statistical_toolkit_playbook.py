@@ -1,170 +1,165 @@
 """
 SUMMARY_statistical_toolkit_playbook.py
 =================================================================
-데이터셋별 정리(SUMMARY_fano_avoided_tls...)와 별개로, 오늘 쓴
-통계 도구들을 "도구 자체" 기준으로 정리한 문서. 순수 정리용,
-실행용 코드 아님.
+Separately from the per-dataset write-up (SUMMARY_fano_avoided_tls...), a document organizing the
+statistical tools used here by "the tools themselves". A pure write-up,
+not executable code.
 
 =================================================================
-1. Gaussian(단순최소제곱) vs Robust(Student-t)
+1. Gaussian (simple least squares) vs Robust (Student-t)
 =================================================================
-[뭘 하는가]
-둘 다 "모델과 데이터의 차이(잔차)를 얼마나 나쁘게 볼지" 정하는 규칙.
-Gaussian은 잔차^2으로 페널티를 매김(제곱이라 큰 잔차에 극도로 민감).
-Robust(Student-t)는 log(1+잔차^2/nu) 형태라, 큰 잔차에 훨씬 관대함.
+[What it does]
+Both are rules that decide "how badly to treat the difference (residual) between model and data".
+Gaussian penalizes residual^2 (being squared, it is extremely sensitive to large residuals).
+Robust (Student-t) has the form log(1+residual^2/nu), so it is far more tolerant of large residuals.
 
-[언제 쓰나]
-- 이상치가 있을 것 같은데 확신이 안 설 때: 둘 다 돌려서 비교
-- 둘이 거의 같은 답을 내면(오늘 여러 번 확인) -> 그 답을 신뢰
-- 둘이 크게 다르면 -> 이상치가 실제로 결과를 왜곡시키고 있다는 신호
+[When to use]
+- When you suspect outliers but are not sure: run both and compare
+- If the two give almost the same answer (confirmed several times) -> trust that answer
+- If the two differ greatly -> a sign that outliers are actually distorting the result
 
-[수학적 관계]
-nu(자유도)를 무한대로 보내면 Robust는 정확히 Gaussian이 됨. 즉
-Robust가 Gaussian을 "포함하는" 더 넓은 개념.
+[Mathematical relationship]
+Sending nu (degrees of freedom) to infinity makes Robust exactly Gaussian. That is,
+Robust is a broader concept that "contains" Gaussian.
 
-[오늘 실제로 쓰인 곳]
-Fano 데이터 이상치 제거 후 평균 추정, TLS 카탈로그 20개 값 통계.
-
-
-=================================================================
-2. 피셔행렬(Fisher matrix) / 라플라스 근사(Laplace approximation)
-=================================================================
-[뭘 하는가]
-로그우도(또는 log posterior)를 최적점에서 2차미분(곡률)해서, "이
-파라미터를 얼마나 정확히 아는지"를 행렬로 나타냄. 역행렬을 취하면
-공분산(covariance) - 각 파라미터의 불확실성과 파라미터끼리의
-상관관계를 담고 있음.
-
-[emcee 없이 MCMC 흉내내는 방법]
-피셔행렬로 구한 공분산을 가진 "다변량 정규분포"에서 표본을 뽑으면,
-"posterior가 정확히 가우시안 모양이다"라는 가정 하에 MCMC 표본과
-개념적으로 동일한 정보를 줌. 오늘 emcee가 샌드박스에 없을 때 계속
-이 방법을 대신 씀.
-
-[중요한 한계 - 오늘 직접 겪음]
-이 방법은 posterior가 "봉우리 하나"라고 가정함. 실제로 봉우리가
-여러 개(multi-modal)면 완전히 틀린 그림을 줌 - avoided-crossing
-분석에서 정확히 이 문제를 만남(점추정/피셔로는 우물이 하나인지
-여러 개인지 절대 못 알아냄, 진짜 MCMC 필요했음).
+[Where it was actually used]
+Mean estimation after removing outliers in the Fano data, statistics of the 20 TLS catalog values.
 
 
 =================================================================
-3. 진짜 MCMC (emcee) - 피셔행렬과 뭐가 다른가
+2. Fisher matrix / Laplace approximation
 =================================================================
-[뭘 하는가]
-posterior "전체 모양"을 직접 탐색. 여러 워커(walker)가 파라미터
-공간을 돌아다니며, 그럴듯한 곳에는 오래 머물고 아닌 곳은 빨리
-떠남 - 결과적으로 표본 밀도가 posterior 모양 그 자체가 됨.
+[What it does]
+Takes the second derivative (curvature) of the log-likelihood (or log posterior) at the optimum and expresses "how precisely
+this parameter is known" as a matrix. Inverting it gives the covariance, which holds
+the uncertainty of each parameter and the correlations among parameters.
 
-[피셔행렬로는 안 되고 MCMC로만 되는 것]
-- 봉우리가 여러 개인지 확인(multi-modality)
-- 특정 봉우리의 "무게"(그 답이 얼마나 그럴듯한지) 비교
-- 비대칭적이거나 뒤틀린 posterior 모양 정확히 포착
+[A way to imitate MCMC without emcee]
+Drawing samples from a "multivariate normal distribution" with the covariance obtained from the Fisher matrix gives,
+under the assumption that "the posterior is exactly Gaussian-shaped", conceptually the same information as MCMC samples.
+This method was used as a substitute whenever emcee was not available in the sandbox.
 
-[오늘 겪은 핵심 사례 - avoided-crossing]
-- 처음(작은-gamma) 시작점: 특정 우물로 수렴
-- 큰-gamma(0.109) 시작점: 다른 자리로 수렴하나 확인용으로 별도 실행
-- 결론: 두 체인 다 결국 작은 값 쪽으로 흘러감 -> 큰-gamma 우물은
-  진짜가 아니었다는 걸 MCMC로만 확인 가능했음
-
-[중요 - prior 버그가 MCMC 결과를 완전히 무효화시킬 수 있음]
-prior 범위가 실제 답을 원천 배제하면, MCMC가 "수렴했다"고 나와도
-그 결론 자체가 의미 없음. 오늘 gamma_stark prior가 (-0.01,0.01)로
-좁아서 0.109를 아예 탐색 못했던 사례 - MCMC 돌리기 전에 prior
-범위부터 항상 재확인해야 함.
+[Important limitation - encountered first-hand]
+This method assumes that the posterior has "a single peak". If it actually has several
+peaks (multi-modal), it gives a completely wrong picture - this is exactly the problem met in the avoided-crossing
+analysis (a point estimate or Fisher matrix can never tell whether there is one well or several,
+and real MCMC was needed).
 
 
 =================================================================
-4. Prior(사전분포) 설계
+3. Real MCMC (emcee) - how does it differ from the Fisher matrix
 =================================================================
-[뭘 하는가]
-"이 파라미터가 가질 수 있는 범위"를 미리 정해줌. 균일(uniform)
-prior가 제일 흔함 - 범위 안에서는 다 똑같이 가능하다고 봄.
+[What it does]
+Directly explores the "whole shape" of the posterior. Several walkers move around the parameter
+space, staying long in plausible places and leaving implausible ones quickly -
+as a result the sample density becomes the shape of the posterior itself.
 
-[오늘 겪은 핵심 교훈]
-prior 범위는 "적당히 넉넉하게"가 기본 원칙. 너무 좁으면(오늘의
-gamma_stark 사례처럼) 진짜 답을 원천 배제해버려서, 그 뒤에 나온
-모든 결과(MCMC 수렴 여부 포함)가 무효가 됨. 반대로 너무 넓으면
-탐색이 비효율적이거나, 물리적으로 말이 안 되는 값(예: 음의 품질
-계수)까지 허용해버림 - 물리적으로 타당한 범위로 적당히 조이는 게
-중요.
+[What only MCMC can do, and the Fisher matrix cannot]
+- Check whether there are several peaks (multi-modality)
+- Compare the "weight" of a given peak (how plausible that answer is)
+- Capture asymmetric or distorted posterior shapes accurately
 
+[The key case met here - avoided crossing]
+- Starting from the first (small-gamma) point: converged to a particular well
+- Starting from the large-gamma (0.109) point: converged elsewhere, but run separately for confirmation
+- Conclusion: both chains eventually drifted toward small values -> only MCMC could confirm that
+  the large-gamma well was not real
 
-=================================================================
-5. 파라미터화(parameterization) - V0 재중심화
-=================================================================
-[문제]
-직선(또는 완만한 곡선) 모델을 y = a + b*x 형태로 쓸 때, "절편 a"를
-x=0에서의 값으로 정의하면, 실제 측정 구간이 x=0에서 멀리 떨어져
-있을 경우 a와 b가 심하게 얽힘(상관계수가 1에 가까워짐).
-
-[해결책]
-y = a + b*(x - x0) 형태로, x0을 측정 구간 "중앙"으로 재정의. 이러면
-a는 "측정 구간 한가운데서의 값"이 되어, b(기울기)와 거의 독립적으로
-추정됨.
-
-[오늘 직접 검증한 수치]
-V0 없이: 상관계수 1.0000 (완전히 얽힘)
-V0 적용: 상관계수 0.0000 (완전히 분리)
-
-[일반화]
-다항식 회귀, 스플라인 등 "원점에서 먼 구간을 다루는" 모든 상황에
-적용되는 일반적인 원칙. 오늘은 avoided-crossing의 f_TLS0에 적용.
+[Important - a prior bug can completely invalidate an MCMC result]
+If the prior range excludes the real answer from the start, then even if MCMC reports "converged"
+the conclusion itself is meaningless. In the gamma_stark case, the prior was narrow at (-0.01,0.01),
+so 0.109 could never be explored - the prior range must always be rechecked before running MCMC.
 
 
 =================================================================
-6. multi-start 최적화
+4. Prior design
 =================================================================
-[문제]
-경사하강법 계열 최적화(curve_fit 등)는 시작점 근처의 "가장 가까운
-골짜기"로만 내려감 - 진짜 최적점이 다른 골짜기에 있어도 못 찾음
-(국소최적점, local minimum 문제).
+[What it does]
+Fixes in advance "the range this parameter can take". A uniform
+prior is the most common - every value inside the range is considered equally possible.
 
-[해결책]
-여러 개의 서로 다른 초기값에서 각각 최적화를 돌리고, 그중 손실함수
-(chi2 등)가 가장 낮은 걸 채택.
-
-[오늘 반복해서 마주친 상황]
-- Fano 데이터 R4: FWHM 기반 초기값이 전부 실패, circle fit 결과를
-  후보로 추가해서야 해결
-- TLS 딥 추적: phi(위상) 여러 초기값 필요
-- avoided-crossing: gamma_stark 부호를 몰라서 +/-109 둘 다 필요
-
-[한계 - multi-start도 완벽하지 않음]
-여러 초기값에서 얻은 chi2들이 "서로 비슷하면", 이건 국소최적점을
-다 못 찾은 게 아니라 진짜 posterior가 다중봉우리라는 신호일 수
-있음 - 이때는 multi-start로 안 끝내고 MCMC로 넘어가야 함(위 3번).
+[Key lesson]
+The basic principle is to make the prior range "reasonably generous". If it is too narrow (as in the
+gamma_stark case), it excludes the true answer from the start, and all the results that follow
+(including whether MCMC converged) become void. Conversely, if it is too wide,
+the search becomes inefficient or allows physically meaningless values (for example, a negative quality
+factor) - it is important to tighten it moderately to a physically valid range.
 
 
 =================================================================
-7. 잔차 진단 (residual diagnostics)
+5. Parameterization - V0 recentering
 =================================================================
-[자기상관(autocorrelation)]
-잔차가 "독립"이라는 가정이 맞는지 확인. 이웃한 잔차끼리 닮아있으면
-(자기상관이 0에서 벗어나면), 단순 최소제곱의 오차추정이 부정확함.
-- 오늘 배운 함정: lag=29까지만 보면 상관이 "거의 안 줄어드는 것"
-  처럼 보여서 잘못 판단할 뻔함 -> lag=900까지 넓게 봐야 진짜 감쇠
-  구조(길이척도)가 드러남.
+[Problem]
+When a line (or gentle curve) model is written as y = a + b*x and the "intercept a" is defined as the value at
+x=0, then if the actual measurement range is far from x=0, a and b become severely entangled
+(the correlation coefficient approaches 1).
 
-[품질점수/신호대잡음비(SNR)]
-"찾은 게 진짜 신호인지 잡음인지" 판단하는 절대적 기준. 순수 잡음도
-"그럴듯한 패턴"을 우연히 만들 수 있으므로(오늘 직접 검증: 21개
-포인트짜리 궤적이 순수 잡음에서도 나옴), 길이/단조성 같은 상대적
-기준만으로는 부족하고, 배경 대비 딥 깊이 같은 절대적 기준이 필요.
+[Solution]
+Write it as y = a + b*(x - x0) and redefine x0 as the "center" of the measurement range. Then
+a becomes "the value at the middle of the measurement range" and is estimated almost independently of b (the slope).
+
+[Numbers verified directly]
+Without V0: correlation coefficient 1.0000 (completely entangled)
+With V0:    correlation coefficient 0.0000 (completely separated)
+
+[Generalization]
+A general principle that applies to polynomial regression, splines, and any situation that "deals with a range
+far from the origin". Here it was applied to f_TLS0 of the avoided crossing.
 
 
 =================================================================
-8. 오늘 수렴한 표준 작업 순서 (workflow)
+6. Multi-start optimization
 =================================================================
-1. 빠른 대수적 방법(circle fit 등)으로 안전한 초기값/배경값 확보
-2. 이상치 가볍게 제거(3~5%)
-3. Gaussian vs Robust 교차검증 - 둘이 일치하면 점추정 신뢰
-4. 피셔행렬로 신뢰구간(1차 근사, emcee 없을 때 대안)
-5. 잔차의 자기상관 진단(짧은 거리 + 긴 거리 둘 다, 넓은 lag 범위)
-6. 여러 파라미터가 얽힌 모델(2D 등)이면 multi-start
-7. multi-start 결과들의 chi2가 서로 비슷하면 -> 진짜 MCMC로 posterior
-   전체 확인(prior 범위 재점검 필수)
-8. 마지막으로 반드시 육안 검증(실측 데이터 위에 모델 겹쳐그리기) -
-   숫자만으로는 절대 결론 내리지 말 것. 오늘 avoided-crossing에서
-   이 마지막 단계가 처음 세운 가설(대각선) 자체를 뒤집었음.
+[Problem]
+Gradient-descent-type optimizers (curve_fit, etc.) only descend into the "nearest valley" to the starting point -
+they cannot find the true optimum even if it lies in a different valley
+(the local minimum problem).
+
+[Solution]
+Run the optimization from several different initial values and adopt the one with the lowest loss
+(chi2, etc.).
+
+[Situations met repeatedly]
+- Fano data R4: FWHM-based initial values all failed; it was solved only after adding the circle-fit result
+  as a candidate
+- TLS dip tracking: several initial values of phi (phase) were needed
+- Avoided crossing: the sign of gamma_stark was unknown, so both +/-109 were needed
+
+[Limitation - multi-start is not perfect either]
+If the chi2 values from several initial values are "similar to each other", this may be a sign not that the
+local optima were all missed but that the true posterior is multi-modal - in that case do not stop at multi-start
+and move on to MCMC (see 3 above).
+
+
+=================================================================
+7. Residual diagnostics
+=================================================================
+[Autocorrelation]
+Checks whether the assumption that the residuals are "independent" holds. If neighboring residuals resemble each other
+(autocorrelation departs from 0), the error estimate of simple least squares is inaccurate.
+- A pitfall learned: looking only up to lag=29 made the correlation look as if it "hardly decreased",
+  which almost led to a wrong judgment -> only when the lag was widened to 900 did the true decay
+  structure (length scale) appear.
+
+[Quality score / signal-to-noise ratio (SNR)]
+An absolute criterion for judging whether "what was found is a real signal or noise". Pure noise can also
+happen to make a "plausible pattern" (verified directly: a 21-point
+track also arose from pure noise), so relative criteria such as length/monotonicity are not enough; an absolute criterion such as
+dip depth relative to the background is needed.
+
+
+=================================================================
+8. The standard workflow settled on
+=================================================================
+1. Get safe initial/background values with a fast algebraic method (circle fit, etc.)
+2. Lightly remove outliers (3-5%)
+3. Gaussian vs Robust cross-validation - if the two agree, trust the point estimate
+4. Confidence intervals from the Fisher matrix (first-order approximation, an alternative when emcee is not available)
+5. Residual autocorrelation diagnostics (both short and long distances, a wide lag range)
+6. For models with several entangled parameters (2D, etc.), use multi-start
+7. If the chi2 values of the multi-start results are similar to each other -> check the whole posterior
+   with real MCMC (rechecking the prior range is mandatory)
+8. Finally, always do a visual check (overlay the model on the measured data) -
+   never conclude from numbers alone. In the avoided crossing, this last step overturned
+   the hypothesis (a diagonal) first set up.
 """

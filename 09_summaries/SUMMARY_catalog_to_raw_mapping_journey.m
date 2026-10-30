@@ -2,187 +2,174 @@
 =================================================================
 SUMMARY_catalog_to_raw_mapping_journey.m
 =================================================================
-tabledata2 카탈로그 항목(원저자가 이미 피팅해둔 TLS 결과)을,
-raw 원본 segment(639개 중 하나)와 연결하려던 여정 정리.
-순수 정리용 문서 - 실행 코드 아님.
+A summary of the attempt to connect the tabledata2 catalog entries (TLS results already fitted by the original authors)
+to the raw segments (one of 639).
+A pure write-up document - not executable code.
 
 
 =================================================================
-1부. 물리적 배경
+Part 1. Physical background
 =================================================================
-TLS(이준위계, Two-Level System): 비정질 재료(산화막 등) 속 결함이
-만드는 미시적 시스템. 두 안정 상태 사이를 터널링함.
+TLS (two-level system): a microscopic system created by defects in amorphous materials (oxide films, etc.).
+It tunnels between two stable states.
 
-swap spectroscopy: 큐빗 주파수(플럭스로 조정)와 TLS 주파수(게이트
-전압으로 Stark 편이) 두 축을 스캔하며, 둘이 공명하는 지점에서
-avoided-crossing(회피교차)이 생기는지 관측하는 표준 실험 기법.
+Swap spectroscopy: a standard experimental technique that scans two axes, the qubit frequency (tuned by flux) and the TLS frequency
+(Stark-shifted by gate voltage), and observes whether an avoided crossing
+appears where the two are resonant.
 
-게이트 전극(alpha=ao4, beta=ao5, gamma=ao3, delta=ao6): 칩 위
-4개의 국소 전압 인가 지점. 각 전극이 TLS에 얼마나 강하게 결합
-(gamma, MHz/V)하는지 비교해서 TLS의 위치를 역산하는 게 전체
-연구의 최종 목표.
-
-
-=================================================================
-2부. 데이터 구조 (오늘까지 확정된 것)
-=================================================================
-raw 구조: qdats(639개 segment, 라운드로빈으로 4개 전극이 순환:
-  raw_index%4==0->ao4, 1->ao5, 2->ao3, 3->ao6), 각 segment는
-  21(전압) x 401(플럭스->주파수) 2D 지도(dispamp 등).
-
-tabledata2 구조(13행 x 200열, 실제 채워진 건 파일당 19~20개):
-  행0,2,9,11  = 4개 전극의 결합세기(gamma, Hz/V 단위)
-  행1,3,10,12 = 당초 "대칭점 전압"으로 추정했으나 -> 오늘 확인
-                결과 물리적으로 불가능한 값(-151V,+1240V 등)이
-                나와서 그 가정이 틀렸음이 확정됨. 정체 미상이나,
-                결합세기가 작을수록 절댓값이 커지는 경향으로 보아
-                "이론적 외삽값" 같은 파생량일 가능성이 높음(검증
-                안 됨, 다음 과제).
-  행4         = TLS 고유주파수(Hz) - 확실히 검증됨(raw 딥 주파수와
-                스케일 일치)
-  행5         = 0/1 플래그로 추정
-  행6,7,8     = 항상 0(미사용)
+Gate electrodes (alpha=ao4, beta=ao5, gamma=ao3, delta=ao6): four local voltage
+application points on the chip. The ultimate goal of the whole study is to infer the TLS position by comparing how strongly
+each electrode couples to the TLS (gamma, MHz/V).
 
 
 =================================================================
-3부. 카탈로그->raw 역매핑 여정 (v1~v4 + 다중열 스캔)
+Part 2. Data structure (as established so far)
 =================================================================
+Raw structure: qdats (639 segments, the 4 electrodes cycle in round-robin order:
+  raw_index%4==0->ao4, 1->ao5, 2->ao3, 3->ao6); each segment is a
+  21 (voltage) x 401 (flux -> frequency) 2D map (dispamp, etc.).
 
---- v1: 행1/3/10/12를 "대칭점 전압"으로 가정하고 raw 전압축과 직접
-    매칭 시도 ---
-결과: 실패. 목표전압 -151.26V가 raw 전압범위(-60~+100V) 밖이라
-후보 0개. 그리고애초에 이 전압값 자체가(-151,+1240,-2585,-276)
-극저온 게이트 스윕으로는 불가능한 값 - 가정 자체가 틀렸음이 확정.
-
---- 진단: 왜 행1/3/10/12가 전압이 아닌가 ---
-크기 패턴 확인 결과, 결합세기(gamma)가 작을수록 이 값의 절댓값이
-커지는 경향 발견. f=gamma*V 관계에서 "이 TLS를 대칭점까지 옮기려면
-필요한 이론적 전압"을 역산한 외삽값일 가능성 제기(검증은 아직 안 됨).
-
---- v2: 행4(주파수)+주 전극(결합세기 최대)으로 역매핑 시도 ---
-문제 발견: 이 파일은 "같은 주파수창(5.035~5.257GHz)을 전압 조각만
-바꿔가며 반복"하는 구조라서, "주파수가 창 안에 있는가"라는 조건이
-사실상 필터 역할을 전혀 못 함(ao4 160개 segment 전부 통과).
-그 상태에서 품질점수를 "맵 전체 최솟값"으로 계산해버려서, 목표
-주파수와 무관한 가장 시끄러운 배경(다른 진한 띠)을 "1등"으로
-잘못 채택(raw_index=503, 품질점수 6.88).
-
---- v3: 품질점수를 "목표 주파수 근처"로 국소화 + A/B/C 케이스 판정 ---
-수정: 국소품질(목표주파수 근처만) vs 전체품질(맵 전체) 두 개를
-따로 계산하고, "목표지점 최솟값 = 맵 전체 최솟값"인지 확인.
-  A케이스: 목표 주파수 자체가 이 맵의 진짜 최저점 (진짜 후보)
-  B케이스: 목표 주파수는 평범, 다른 곳(예 5.09GHz)이 진짜 최저점
-  C케이스: 한 픽셀만 우연히 깨진 이상치
-합성 데이터로 A/B 구분 로직 사전 검증(정확히 구분됨을 확인).
-열4 실제 적용 결과: ao4 상위 10개 후보 전부 B케이스(가짜) - 즉
-raw_index=503은 "열4의 원본"이 아니라 그냥 시끄러운 배경이었음.
-
---- v4: 4개 전극 전부로 확장(1개 전극 실패했다고 포기 안 함) ---
-"결합세기가 가장 큰 전극이 곧 원시 맵에서 가장 잘 보이는 전극은
-아닐 수 있다"는 교훈 반영. ao4,ao5,ao3,ao6 전부 A케이스 탐색.
-열4 결과: 4개 전극, 총 639개 segment 전부에서 A케이스 0개.
-즉 열4는 이 파일의 raw 원본 어디에서도 "그 맵의 주된 딥"으로
-나타나지 않음 - 단일 시점(1 segment) raw 데이터로는 확인 불가능한
-항목으로 잠정 결론.
-
---- 다중열 스캔: 열4가 특이 케이스인지, 방법 자체 문제인지 구분 ---
-19개 카탈로그 항목 전부에 v4의 A케이스 탐색을 반복 적용.
-결과: 19개 중 3개(15.8%)만 A케이스 확인됨.
-  열17(5.097GHz): A케이스 597개(=160세그먼트x4전극에 근접) - 이
-    파일 raw의 "진짜 지배적인 배경 딥". 어제(seg12) 육안검증에서
-    확인한 5.09GHz 근처 진한 가로 띠와 정확히 일치 - 서로 다른
-    3가지 방법(육안, 픽셀추적, 이번 통계적 스캔)이 독립적으로
-    같은 결론에 도달한 셈.
-  열11(5.103GHz): A케이스 46개 - 같은 띠 근처, 덜 지배적.
-  열1(5.073GHz): A케이스 1개 - 띠 가장자리.
-  나머지 16개(열4 포함): A케이스 0개.
-
-결정적 확인: 큰 gamma만 실패하는 게 아님(열11은 gamma=1377MHz/V로
-매우 크지만 A케이스 있음) - 성공/실패를 가르는 건 결합세기 크기가
-아니라 "목표 주파수가 그 파일의 배경 최강 띠와 우연히 겹치는가".
+tabledata2 structure (13 rows x 200 columns; 19-20 entries actually filled per file):
+rows 0, 2, 9, 11  = coupling strengths (gamma, in Hz/V) of the 4 electrodes
+rows 1, 3, 10, 12 = originally guessed to be "symmetry-point voltages", but checking
+gave physically impossible values (-151 V, +1240 V, etc.), so
+that assumption is definitely wrong. Identity unknown, but since the absolute value
+tends to grow as the coupling strength shrinks, they are likely
+derived quantities such as "theoretical extrapolated values" (not verified, a next task).
+row 4         = TLS eigenfrequency (Hz) - firmly verified (scale matches the raw dip frequency)
+row 5         = presumed to be a 0/1 flag
+rows 6, 7, 8  = always 0 (unused)
 
 
 =================================================================
-4부. 통계적 방법론 요약
+Part 3. Catalog -> raw reverse-mapping journey (v1-v4 + multi-column scan)
 =================================================================
-국소(local) vs 전역(global) 품질점수 구분: 관심 영역으로 좁히지
-  않은 "전체 최솟값" 기반 지표는, 관심 없는 다른 강한 신호에
-  쉽게 속을 수 있음(오늘 503의 가짜 1등 사례) - 반드시 관심
-  영역 안에서 별도로 계산한 지표와 비교해야 함.
 
-A/B/C 케이스 분류: 단순 숫자(점수) 하나로 판단하지 않고, "그 점수가
-  실제로 원하는 지점에서 나온 것인가"를 별도 조건(목표=전역최소?)
-  으로 명시적으로 검증. 합성 데이터로 이 분류 로직 자체도 사전
-  검증(정확한 구분 확인).
+--- v1: assumed rows 1/3/10/12 were "symmetry-point voltages" and tried to match directly
+    to the raw voltage axis ---
+Result: failed. The target voltage -151.26 V lies outside the raw voltage range (-60 to +100 V),
+so there were 0 candidates. Moreover these voltage values themselves (-151, +1240, -2585, -276)
+are impossible for a cryogenic gate sweep - the assumption itself was definitely wrong.
 
-다중 항목 체계적 스캔: 한 개 항목(열4)의 실패만으로는 "방법이
-  틀렸다"와 "이 항목이 특이하다"를 구분 불가능. 여러 항목(19개)에
-  동일 검증을 반복해서, 성공/실패 패턴 자체를 통계로 확인 -
-  이러면 방법의 타당성(진짜 신호에는 반응하는가)과 개별 항목의
-  특성을 분리해서 판단 가능해짐.
+--- Diagnosis: why rows 1/3/10/12 are not voltages ---
+Checking the magnitude pattern showed that the smaller the coupling strength (gamma), the
+larger the absolute value. From f=gamma*V, it may be an extrapolated value back-computed as
+"the theoretical voltage needed to move this TLS to the symmetry point" (not yet verified).
+
+--- v2: tried reverse mapping with row 4 (frequency) + main electrode (largest coupling strength) ---
+Problem found: this file has a structure that "repeats the same frequency window (5.035-5.257 GHz)
+while changing only the voltage slice", so the condition "is the frequency inside the window?"
+did not work as a filter at all (all 160 ao4 segments passed).
+In that state the quality score was computed as the "whole-map minimum", so the noisiest
+background (another dark band) unrelated to the target frequency was wrongly adopted as "number one"
+(raw_index=503, quality score 6.88).
+
+--- v3: localized the quality score to "near the target frequency" + A/B/C case classification ---
+Fix: compute the local quality (near the target frequency only) and the global quality (whole map)
+separately, and check whether "minimum at the target point = global minimum of the map".
+  Case A: the target frequency itself is the true minimum of this map (a true candidate)
+  Case B: the target frequency is unremarkable and another place (e.g. 5.09 GHz) is the true minimum
+  Case C: an outlier where only one pixel happens to be corrupted
+The A/B separation logic was validated beforehand on synthetic data (it separated them exactly).
+Real application to column 4: all of the top 10 ao4 candidates were case B (false) - that is,
+raw_index=503 was not "the origin of column 4" but just a noisy background.
+
+--- v4: extended to all 4 electrodes (did not give up because one electrode failed) ---
+Reflects the lesson that "the electrode with the largest coupling strength is not necessarily the
+electrode most visible in the raw map". Case A search over ao4, ao5, ao3, ao6.
+Column 4 result: 0 case-A hits across the 4 electrodes and all 639 segments in total.
+So column 4 never appears as the "main dip of the map" anywhere in this file's raw data -
+provisionally concluded to be an entry that cannot be confirmed with single-time-point (1 segment) raw data.
+
+--- Multi-column scan: separating whether column 4 is a special case or the method itself is the problem ---
+The v4 case-A search was repeated for all 19 catalog entries.
+Result: only 3 of 19 (15.8%) were confirmed as case A.
+Column 17 (5.097 GHz): 597 case-A hits (close to 160 segments x 4 electrodes) - this
+is the "truly dominant background dip" of this file's raw data. It matches exactly the dark horizontal band near 5.09 GHz
+found by visual inspection earlier (seg12) - three different methods (visual, pixel tracking, this statistical scan)
+independently reached the same conclusion.
+Column 11 (5.103 GHz): 46 case-A hits - near the same band, less dominant.
+Column 1 (5.073 GHz): 1 case-A hit - at the edge of the band.
+The remaining 16 (including column 4): 0 case-A hits.
+
+Decisive check: it is not only large gamma that fails (column 11 has a very large gamma=1377 MHz/V
+yet has case-A hits) - what separates success from failure is not the size of the coupling strength
+but whether "the target frequency happens to coincide with the strongest background band of that file".
 
 
 =================================================================
-5부. 최종 결론 및 다음 단계
+Part 4. Summary of statistical methodology
 =================================================================
-이 파일(400to640)의 raw 데이터에서, "한 시점(단일 segment) 안에서
-가장 진한 딥"으로 직접 확인 가능한 카탈로그 항목은 열17(5.097GHz)
-뿐임. 열4를 포함한 대부분 항목(84%)은 원저자의 자체 알고리즘
-("quin")이 훨씬 정교한 방법(여러 segment를 이어붙이거나, 약한
-신호를 통계적으로 끌어올리는 방식)으로 찾아낸 것으로 추정 -
-우리의 단순한 단일 프레임 최솟값 탐색으로는 재현 불가능한 영역.
+Local vs global quality scores: an indicator based on the "overall minimum" that is not narrowed to the region of interest
+can easily be fooled by other strong signals of no interest (the false number one at raw_index 503) - it must always
+be compared with an indicator computed separately inside the region of interest.
 
-다음 단계: 열17을 대상으로 seg12 때와 같은 절차(육안검증 ->
-avoided-crossing 2D 모델 피팅 -> MCMC)를 진행. 오늘 처음으로
-"카탈로그와 raw가 실제로 맞아떨어지는" 검증된 사례를 만들 수 있는
-기회.
+A/B/C case classification: instead of judging by a single number (a score), explicitly verify with a
+separate condition (target = global minimum?) "whether the score actually came from the point we want".
+The classification logic itself was also validated beforehand on synthetic data (exact separation confirmed).
+
+Systematic scan over many entries: the failure of a single entry (column 4) alone cannot distinguish "the method
+is wrong" from "this entry is unusual". By repeating the same check over several entries (19), the
+success/failure pattern itself is confirmed statistically - this lets the validity of the method (does it respond to real signals?)
+and the characteristics of individual entries be judged separately.
+
 
 =================================================================
-6부. 열17 최종 판단 (카탈로그<->raw 매핑 여정의 마지막 결론)
+Part 5. Final conclusions and next steps
 =================================================================
-연속성 추적으로 raw_index=503(열17, ao4)을 정밀 재검증한 결과:
+In this file's (400to640) raw data, the only catalog entry directly confirmable as "the darkest dip
+within a single time point (single segment)" is column 17 (5.097 GHz). Most entries (84%), including column 4,
+are presumed to have been found by the original authors' own algorithm ("quin"), a far more sophisticated method
+(stitching several segments together, or statistically boosting weak signals) -
+a regime that our simple single-frame minimum search cannot reproduce.
 
-  - 21개 전압 전체에서 딥 주파수가 5.0955~5.0985GHz 사이에 머무름
-  - 딥 위치 표준편차: 0.98MHz (창 폭 ~220MHz 대비 사실상 0)
-  - 1차 다항식 추정 기울기: 0.356MHz/V
-    (카탈로그 gamma=452MHz/V의 약 1/1300 - 완전히 다른 스케일)
+Next step: for column 17, follow the same procedure as for seg12 (visual check ->
+avoided-crossing 2D model fit -> MCMC). This is the first opportunity to produce a verified case in which
+"the catalog and raw data actually match".
 
---- 확정된 사실 (더 이상 의심 안 함) ---
-  1. 카탈로그 열 번호와 raw segment 번호/전압 행은 직접 연결 안 됨
-  2. 이 파일의 모든 raw segment는 같은 주파수창(5.035~5.257GHz)을
-     공유하고, 전압 1V 폭만 다름 - "주파수가 창 안에 있다"는 조건은
-     필터 역할을 거의 못 함
-  3. raw를 지배하는 것은 약 5.096GHz 근처 가로 띠
-  4. 그 띠는 전압을 바꿔도 표준편차 약 1MHz 수준으로 수평 -
-     avoided-crossing이 예측하는 대각선과 명백히 다른 형태
-  5. 카탈로그의 큰 gamma(수백 MHz/V)는 raw 단일 조각 맵과 안 맞음
-  6. 열4·열17 둘 다, raw 단일 프레임의 "가장 진한 딥"이 아님
-  7. raw_index=503은 "열17의 원본"이 아니라, 그 수평 띠가 우연히
-     가장 진하게 나타난 대표 사진일 뿐
+=================================================================
+Part 6. Final judgment on column 17 (the last conclusion of the catalog <-> raw mapping journey)
+=================================================================
+Result of the precise re-verification of raw_index=503 (column 17, ao4) by continuity tracking:
 
---- 최종 해석 판단 ---
-이 수평 띠(약 5.096GHz)를 다음 두 가설 중 하나로 봐야 함:
-  (가설1) 계통 구조 - 오늘 이미 확인한 다른 계통오차들(플럭스
-    기준 3개, 5.168GHz 등)과 같은 성격의, 하드웨어에 내재된
-    반복적 아티팩트
-  (가설2) 거의 안 움직이는(gamma가 매우 작은) 진짜 TLS - 카탈로그의
-    큰 gamma(452MHz/V)와는 무관하게, 이 좁은 표준편차(1MHz) 자체가
-    "그 위치의 TLS는 이 전극에 거의 반응 안 한다"는 걸 보여주는
-    것일 수 있음
+  - Over all 21 voltages the dip frequency stays between 5.0955 and 5.0985 GHz
+  - Standard deviation of the dip position: 0.98 MHz (effectively 0 against a window width of ~220 MHz)
+  - Estimated slope from a first-order polynomial: 0.356 MHz/V
+    (about 1/1300 of the catalog gamma=452 MHz/V - a completely different scale)
 
-두 가설을 이 시점에서 확실히 가르는 추가 증거는 없음. 다만 오늘
-이미 확인된 다른 계통오차들(여러 전극/관측량/전압에서 동일 위치에
-반복 출현)과 같은 패턴(전극 무관하게 항상 비슷한 위치)이 계속
-관찰된다는 점에서, 가설1(계통 구조) 쪽에 조금 더 무게가 실림 -
-그러나 이것도 확정은 아니고, 다음 세션에서 다른 전극/파일로
-교차검증하면 더 명확해질 수 있음.
+--- Established facts (no longer in doubt) ---
+  1. Catalog column numbers and raw segment numbers/voltage rows are not directly linked
+  2. All raw segments in this file share the same frequency window (5.035-5.257 GHz)
+     and differ only in a 1 V span - the condition "the frequency is inside the window"
+     hardly works as a filter
+  3. What dominates the raw data is a horizontal band near 5.096 GHz
+  4. That band is horizontal even when the voltage is changed (standard deviation of about 1 MHz) -
+     clearly different from the diagonal predicted by an avoided crossing
+  5. The large catalog gamma (hundreds of MHz/V) does not match the raw single-slice map
+  6. Neither column 4 nor column 17 is the "darkest dip" of a raw single frame
+  7. raw_index=503 is not "the origin of column 17" but merely a representative picture in which
+     that horizontal band happens to appear darkest
 
-카탈로그의 gamma=452MHz/V는, raw 단일 조각에서는 확인이 안 되므로,
-원저자가 여러 segment를 이어붙이는 방식으로만 얻을 수 있는 값일
-가능성이 가장 유력함 - 이는 열4에서 이미 내린 결론과 동일함.
+--- Final interpretation ---
+This horizontal band (about 5.096 GHz) must be seen as one of the following two hypotheses:
+(Hypothesis 1) A systematic structure - a repeating artifact inherent in the hardware, of the same nature as the other
+systematic errors already confirmed (3 flux-based, 5.168 GHz, etc.)
+(Hypothesis 2) A genuine TLS that barely moves (very small gamma) - regardless of the catalog's
+large gamma (452 MHz/V), this narrow standard deviation (1 MHz) itself
+may show that "the TLS at that position hardly responds to this electrode"
 
-[6부 결론] 카탈로그<->raw 단일 프레임 매핑 시도는 이 시점에서
-정직하게 종료. 남은 것은 추가 raw 탐색이 아니라, 이미 확보한
-증거를 바탕으로 한 해석적 판단이며, 그 판단은 위에 정리한 대로
-"확정 어려움, 계통구조 쪽에 무게"로 마무리함.
+At this point there is no additional evidence that decisively separates the two hypotheses. However, since a pattern
+like the other systematic errors already confirmed (appearing at the same position across several electrodes/observables/voltages)
+keeps being observed (always at a similar position regardless of the electrode),
+a little more weight falls on Hypothesis 1 (systematic structure) - but this is not conclusive either,
+and cross-validation with other electrodes/files in a later session could make it clearer.
+
+The catalog gamma=452 MHz/V cannot be confirmed in a single raw slice, so it is most likely
+a value that can only be obtained by the original authors' way of stitching several segments -
+the same conclusion already reached for column 4.
+
+[Part 6 conclusion] The attempt to map the catalog to single raw frames is honestly closed at this point.
+What remains is not further raw exploration but an interpretive judgment based on the evidence already gathered,
+and that judgment concludes as summarized above:
+"hard to confirm, with more weight on a systematic structure".
 %}
