@@ -182,6 +182,12 @@ prior: $f_r \in (4.8, 5.2)$, $g, \kappa \in (0.001, 0.50)$
 
 <img width="2158" height="729" alt="ALL_clean version" src="https://github.com/user-attachments/assets/6f398fc6-f5b5-4f31-ba74-4f182c674955" />
 
+Gray represents the ideal signal, green represents the distorted noise-free signal, blue dots represent the measured data, and red represents the fitted result. This single figure captures the key findings of the experiment.
+
+- **Baseline mismatch:** The red curve necessarily converges to 1.0 at both ends of the frequency scan, whereas the measured data approach 0.89 and 1.10, respectively. This is because the standard model lacks independent amplitude and baseline parameters (§4.9).
+- **Unmodeled TLS feature:** The red curve fails to reproduce the narrow TLS dip at 5.005 GHz because the model does not include this structure.
+- **Distortion absorbed into κ:** The left dip reaches 0.49 in the green curve but 0.41 in the red curve, indicating that the distortion has been absorbed into the fitted κ parameter (§4.6).
+
 
 ### 4.1 Summary table
 
