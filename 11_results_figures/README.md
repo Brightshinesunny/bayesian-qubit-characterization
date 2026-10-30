@@ -3,6 +3,7 @@
 The three figures in this folder reproduce key findings described in the repository README and `PORTFOLIO_DETAILED.md`, re-run on the actual original data. They are not constructed examples: they were recomputed from the measured data (9 Fano resonator `npz` files and a TLS raw-segment `mat` file) with code that ports the original authors' methodology (`fano_models.py`, the Rieger & Günzler / Probst circle fit).
 
 ---
+<img width="1350" height="900" alt="fig1_qi_divergence" src="https://github.com/user-attachments/assets/2d7fcd71-cb73-4d30-992f-b35073dabc36" />
 
 ## fig1_qi_divergence.png — Divergence of the internal Q near critical coupling
 
