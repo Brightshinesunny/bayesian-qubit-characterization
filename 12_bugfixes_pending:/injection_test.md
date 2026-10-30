@@ -180,6 +180,9 @@ prior: $f_r \in (4.8, 5.2)$, $g, \kappa \in (0.001, 0.50)$
 
 ## 4. Results
 
+<img width="2158" height="729" alt="ALL_clean version" src="https://github.com/user-attachments/assets/6f398fc6-f5b5-4f31-ba74-4f182c674955" />
+
+
 ### 4.1 Summary table
 
 | Scenario | $f_r$ | $g$ | $\kappa$ | $\sigma$ ratio | prior | $\tau$ |
