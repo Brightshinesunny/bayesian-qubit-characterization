@@ -1,94 +1,62 @@
-# 미반영 버그 수정본 (검토 완료, 재실행 대기)
+# Bug Fixes Not Yet Merged (reviewed, awaiting re-run)
 
-이 세 파일은 기존 코드에서 발견된 실제 버그를 수정한 버전입니다.
-아직 저장소 본문 코드로 교체하지 않았고, 과거에 내린 결론들을
-전부 다시 검증하지도 않았습니다. 다음에 이 프로젝트를 다시 열 때
-참고할 수 있도록, 무엇이 왜 바뀌었고 어디에 영향을 주는지만
-정리해둡니다.
+These four files fix real bugs found in the existing code. They have not replaced the main repository code yet, and earlier conclusions have not all been re-verified. This note records what changed, why, and what it affects, for the next time the project is reopened.
 
 ---
 
-## 1. fano_models_v2.py → `02_fano_resonator/` 교체 대상
+## 1. fano_models_v2.py → replaces the file in `02_fano_resonator/`
 
-**FIX-1 (가장 중요)**: Fano 비대칭 가정(isolation)이 깨지는 바로 그
-순간, 불확실성 범위(Qi_min/Qi_max)가 오히려 0으로 보고되던 버그.
-가정이 무너질 때 가장 자신 있는 척하는 셈이라 위험한 버그였음.
-`fano_assumption_violated` 플래그를 추가하고, 위반 시 NaN을 반환하도록 수정.
+**FIX-1 (most important).** At the exact moment the Fano isolation assumption broke down, the uncertainty range (`Qi_min`/`Qi_max`) was being reported as zero. The code looked most confident when its assumption failed, which made this a dangerous bug. A `fano_assumption_violated` flag was added, and the function now returns NaN when the assumption is violated.
 
-**신규 기능 — `qi_range_vs_isolation()`**: isolation 가정을
-10/15/20/25dB로 바꿔가며 Qi 범위가 얼마나 달라지는지 표로 보여주는
-함수. isolation은 측정값이 아니라 가정이므로, 하나의 범위를
-단정하기보다 이 민감도 표를 함께 제시하는 편이 정직하다는 게 취지.
+**New: `qi_range_vs_isolation()`.** Shows how the Qi range changes when the isolation assumption is set to 10/15/20/25 dB. Isolation is an assumption, not a measurement, so it is more honest to report this sensitivity table than to commit to a single range.
 
-**신규 — `CircleFitError` 예외 클래스**: 원 피팅 실패 시(특성방정식
-근을 못 찾거나 반지름이 비물리적일 때) 명확한 예외로 처리. 여러
-공진기를 루프로 돌릴 때 하나가 실패해도 전체가 죽지 않도록 함.
+**New: `CircleFitError` exception.** Circle-fit failures (no root of the characteristic equation, or an unphysical radius) now raise a clear exception, so that one failed resonator does not kill a loop over many resonators.
 
-**영향 범위**: Qi *점추정치* 자체(`result['Qi']`)는 이 버그와 무관한
-별도 계산 단계(STEP D)에서 나오므로 **영향 없음**. 영향을 받는 것은
-**신뢰구간/불확실성 범위**(`Qi_min`, `Qi_max`)뿐. 02_fano_resonator에서
-"신뢰구간이 넓다/좁다"를 논한 부분이 있다면 재검토 필요.
+**What it affects.** The Qi *point estimate* (`result['Qi']`) comes from a separate calculation step (STEP D) and is **not affected**. Only the **confidence interval / uncertainty range** (`Qi_min`, `Qi_max`) is affected. Any statement in `02_fano_resonator` about the interval being wide or narrow needs to be rechecked.
 
-**11_results_figures/fig1, fig2는 영향 없음** — 둘 다 Qi 점추정치만 사용.
+**fig1 and fig2 in `11_results_figures` are not affected**, because both use only the Qi point estimate.
 
 ---
 
-## 2. models_v2.py → `01_zenodo_baseline/core/models.py`,
-   `03_avoided_crossing_tls/` 교체 대상
+## 2. models_v2.py → replaces `01_zenodo_baseline/core/models.py` and files in `03_avoided_crossing_tls/`
 
-**FANO-1 (가장 중요)**: 기존 Fano 보정 함수가 신호를 최대 5배까지
-비물리적으로 축소시키던 버그. 이 상태에서 표준 모델로 피팅하면
-"모델 오설정에 의한 편향"이 아니라 애초에 어떤 파라미터로도 맞출 수
-없는 신호가 되어버림.
+**FANO-1 (most important).** The old Fano-correction function shrank the signal unphysically by up to a factor of 5. A standard model fit to such data no longer measures "bias from model misspecification"; the signal cannot be matched by any parameters at all.
 
-**FANO-2**: x 정의를 그리드(주파수점 개수) 의존 → 선폭(kappa) 기준
-정규화로 변경. 기존 방식은 n_freq를 바꾸면 결과가 달라지는
-재현 불가능한 구조였음.
+**FANO-2.** The definition of x was tied to the frequency grid (number of points). It is now normalized by the linewidth (kappa). The old version gave different results when `n_freq` changed, so it was not reproducible.
 
-**FANO-3**: 곱셈 보정 방식(|S21|>1이 나올 수 있어 비물리적) →
-복소 위상(complex Qc) 방식으로 변경. Khalil et al. 2012,
-Probst et al. 2015의 표준 방식. `method='phase'`로 호출.
+**FANO-3.** The multiplicative correction (which can give |S21| > 1, so is unphysical) was replaced by the complex-phase (complex Qc) method, the standard approach of Khalil et al. 2012 and Probst et al. 2015. Call it with `method='phase'`.
 
-**영향 범위**: 01_zenodo_baseline과 03_avoided_crossing_tls에서
-Fano 왜곡을 포함한 합성(mock) 데이터를 생성/피팅한 부분이 있다면,
-그 결과는 이 버그가 있는 상태에서 나온 것이므로 재검토가 필요함.
-11_results_figures의 그림 3개는 이 파일을 전혀 사용하지 않아 무관.
+**What it affects.** Any mock data with Fano distortion generated or fitted in `01_zenodo_baseline` or `03_avoided_crossing_tls` came from the buggy version and should be rechecked. The three figures in `11_results_figures` do not use this file.
 
 ---
 
-## 3. stress_test_documented.py → `03_avoided_crossing_tls/` 교체 대상
+## 3. stress_test_documented.py → replaces the file in `03_avoided_crossing_tls/`
 
-Avoided-crossing MCMC 파이프라인의 견고성 테스트 스크립트. 원본
-stress_test.py 대비 11개 수정사항(prior 상한, walker 초기화, 딥
-탐색 알고리즘, MCMC 시드 고정, 반교차 flux 자동탐색, 시나리오
-개별 스윕 등).
+A robustness test script for the avoided-crossing MCMC pipeline. It contains 11 changes relative to the original `stress_test.py` (prior upper bounds, walker initialization, dip-search algorithm, fixed MCMC seed, automatic avoided-crossing flux search, per-scenario individual sweeps, and others).
 
-**신규 — 3단계 신호 분리**: 기존엔 "clean(왜곡없음)"과 "noisy"
-2단계였는데, 이제 `s21_ideal`(참값) → `s21_distorted`(왜곡만,
-잡음없음) → `s21_noisy`(왜곡+잡음, 실제 피팅 대상) 3단계로 명확히
-분리. 그래프에서 회색(ideal)→초록(distorted)→빨강(fit) 순으로
-겹쳐 그리면, 왜곡이 무엇을 바꿨고 모델이 어디까지 따라갔는지 한
-장에 드러남.
+**New: three-stage signal separation.** The old version had two stages, "clean" and "noisy". Now `s21_ideal` (true values) → `s21_distorted` (distortion only, no noise) → `s21_noisy` (distortion + noise, the actual fit target) are kept separate. Plotting them as gray (ideal), green (distorted), and red (fit) shows in one figure what the distortion changed and how far the model followed.
 
-**신규 — sigma_ratio 추적**: 잡음 추정치가 참값 대비 몇 배
-과대평가됐는지(`sigma_ratio`)를 결과 딕셔너리에 명시적으로 저장.
-baseline에서도 2.42배, 세 왜곡을 모두 켠 ALL에서는 6.06배까지
-부풀었음을 확인 — 잡음 과대평가는 우도를 느슨하게 해 모델
-오설정을 통계적으로 감춘다는 점에서 중요한 진단 지표.
+**New: `sigma_ratio` tracking.** How many times the estimated noise exceeds the true noise is stored explicitly in the result dictionary. It is already 2.42x at baseline and inflates to 6.06x when all three distortions are on. Overestimated noise loosens the likelihood and statistically hides model misspecification, which makes this an important diagnostic.
 
-**신규 — 물리/통계 용어 설명 섹션 대폭 추가**: avoided-crossing,
-Hopfield coefficient, dispersive regime, tau(자기상관시간),
-MAP vs median 등 핵심 개념을 코드 안에 정리해 재사용성을 높임.
+**New: physics and statistics glossary sections.** Key concepts (avoided crossing, Hopfield coefficient, dispersive regime, autocorrelation time tau, MAP vs. median) are explained in the code to make it reusable.
 
-**핵심 발견 (ALL 시나리오)**: Fano는 kappa를 -7.3%(과소), TLS는
-+8.1%(과대)로 움직이는데, 셋을 동시에 켠 ALL에서는 +3.3%로
-보임 — 단순 합(+0.8%)도 아닌 비선형 상쇄. 개별 스윕 없이 ALL만
-봤다면 각 효과의 크기를 절반 이하로 과소평가했을 것.
+**Key finding (ALL scenario).** Fano moves kappa by −7.3% (underestimate) and TLS by +8.1% (overestimate), but with all three on (ALL) kappa appears off by only +3.3%. That is not even the simple sum (+0.8%); the effects partially cancel nonlinearly. Looking only at ALL, without individual sweeps, would have underestimated the size of each effect by more than half.
 
 ---
 
-## 다음에 할 일 (지금은 안 함)
+## 4. injection_test.md — summary report of the results above
 
-- [ ] 02_fano_resonator에서 Qi 신뢰구간을 언급한 서술이 있다면 재확인
-- [ ] 01/03에서 Fano 보정 모델을 쓴 합성데이터 결과가 있다면 models_v2.py로 재실행
-- [ ] 위 재검토 후 문제없으면 기존 파일을 이 수정본으로 교체하고 이 폴더는 삭제
+A report on the `stress_test_documented.py` results, from the physical background (avoided crossing, Hopfield coefficient, dispersive regime) through seven conclusions to follow-up directions.
+
+**Seven conclusions in brief.** (1) The choice of operating point decides parameter identifiability: at the avoided crossing the error is within 1.2%, while in the dispersive regime g is degenerate and set by the prior. (2) Model misspecification concentrates in kappa: f_r and g stay near 1%, while kappa is off by more than 5x as much. (3) Effects can cancel. (4) The parameter that looks most accurate (f_r) is the least sensitive one. (5) The model's degrees of freedom decide where the distortion goes. (6) The noise estimate itself is contaminated by misspecification, in the direction that hides it. (7) Convergence and accuracy of the estimate are separate questions.
+
+---
+
+## Next steps (not done yet)
+
+- [ ] Recheck any statement in `02_fano_resonator` that mentions Qi confidence intervals
+- [ ] Re-run any mock-data results in `01`/`03` that used the Fano-correction model, with `models_v2.py`
+- [ ] If nothing breaks, replace the old files with these fixed versions and delete this folder
+- [ ] (from `injection_test.md`) Re-run ALL with 40000 steps and check tau
+- [ ] (from `injection_test.md`) Repeat with 5–10 seeds to confirm that the 7–8% kappa error is clearly above the baseline error floor (1.5%)
+- [ ] (from `injection_test.md`) Fit the same data with an extended model that includes Fano/TLS/tilt, check whether the true values are recovered, and compare with the FCV formalism
